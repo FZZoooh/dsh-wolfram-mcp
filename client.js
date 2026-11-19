@@ -21,7 +21,9 @@ window.__ModuleLoader__.load({
         saving: 'Saving…',
         saved: 'Saved. The Wolfram tools reconnect in a moment.',
         failed: 'Could not save the path. Check the value and try again.',
+        loading: 'Loading the saved configuration…',
         unavailable: 'This configuration is unavailable until the plugin is enabled.',
+        readonly: 'This configuration is read-only for the current connection.',
         hint: 'Leave empty to keep the Wolfram tools off. The path is required because the kernel is never assumed.',
       },
       zh: {
@@ -31,7 +33,9 @@ window.__ModuleLoader__.load({
         saving: '保存中…',
         saved: '已保存，Wolfram 工具稍后重新连接。',
         failed: '保存失败，请检查路径后重试。',
+        loading: '正在读取已保存的配置…',
         unavailable: '插件启用后才能配置。',
+        readonly: '当前连接对该配置只读。',
         hint: '留空则不启用 Wolfram 工具。内核位置不会被自动假定，需要显式填写。',
       },
     }
@@ -80,6 +84,13 @@ window.__ModuleLoader__.load({
       const state = form.state ?? {}
       const [value, setValue] = React.useState(state.value?.kernelPath ?? '')
       const [status, setStatus] = React.useState('idle')
+
+      // A form that has not read the saved entry yet must not offer Save: an
+      // untouched empty field would otherwise clear a configured path.
+      if (state.status !== 'ready') {
+        return h('p', { style: styles.hint }, state.status === 'loading' ? t('loading') : t('unavailable'))
+      }
+
       const busy = status === 'saving'
       const disabled = state.writable === false || busy
 
@@ -128,6 +139,7 @@ window.__ModuleLoader__.load({
           status === 'failed' ? h('span', { style: styles.error, role: 'alert' }, t('failed')) : null,
         ),
         h('p', { style: styles.hint }, t('hint')),
+        state.writable === false ? h('p', { style: styles.hint, role: 'note' }, t('readonly')) : null,
       )
     }
 
