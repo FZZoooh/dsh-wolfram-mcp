@@ -83,7 +83,7 @@ export async function apply(ctx, config) {
       await ctx.loader.remove(BRIDGE_ID)
     }
     if (!kernelPath) {
-      ctx.logger.info('wolfram-mcp: no kernel path configured; open Plugins > Wolfram Mathematica > Configure')
+      ctx.logger.info('wolfram-mcp: no kernel path configured; open Plugins > Wolfram Mathematica and set the kernel executable')
       return
     }
     await ctx.loader.create({

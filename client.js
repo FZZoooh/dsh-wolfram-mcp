@@ -1,16 +1,18 @@
-// Browser half: the row configuration page for the Wolfram bundle.
+// Browser half: the configuration form for the Wolfram bundle.
 //
-// The Plugins page opens this page from a row's Configure control and hands
-// over `form`, a view over the row's Host settings entry (value, revision,
-// write queue). Saving a volatile field updates the running Host plugin in
-// place, which rebuilds the MCP bridge with the new kernel path.
+// It renders on the bundle's own page through `plugins.bundle.config`, between
+// the description and the component list, so the kernel path is visible
+// without opening a component page. The form is a live view over this
+// plugin's Host configuration entry (`configForms`): saving a volatile field
+// updates the running Host plugin in place, which rebuilds the MCP bridge.
 window.__ModuleLoader__.load({
   id: 'dsh-wolfram-mcp',
   factory(require) {
     const React = require('react')
     const h = React.createElement
     const NS = 'wolfram-mcp'
-    const ROW_KEY = 'dsh-wolfram-mcp#wolfram-mcp'
+    const BUNDLE_NAME = 'dsh-wolfram-mcp'
+    const CONFIG_NS = 'wolfram-mcp'
     const INPUT_ID = 'dsh-wolfram-kernel-path'
 
     const DICTS = {
@@ -78,21 +80,28 @@ window.__ModuleLoader__.load({
       error: { fontSize: '12px', color: 'var(--dsw-alias-state-error-primary)' },
     }
 
-    function WolframConfig({ form, t }) {
-      if (!form) return h('p', { style: styles.hint }, t('unavailable'))
+    function WolframConfig({ t, forms }) {
+      const controller = React.useMemo(() => forms.get(CONFIG_NS), [forms])
+      const subscribe = React.useCallback((listener) => controller.subscribe(listener), [controller])
+      const read = React.useCallback(() => controller.getSnapshot(), [controller])
+      const snapshot = React.useSyncExternalStore(subscribe, read)
 
-      const state = form.state ?? {}
-      const [value, setValue] = React.useState(state.value?.kernelPath ?? '')
+      const [value, setValue] = React.useState('')
       const [status, setStatus] = React.useState('idle')
+      const saved = snapshot.value?.kernelPath ?? ''
+
+      React.useEffect(() => {
+        if (snapshot.status === 'ready') setValue(saved)
+      }, [snapshot.status, saved])
 
       // A form that has not read the saved entry yet must not offer Save: an
       // untouched empty field would otherwise clear a configured path.
-      if (state.status !== 'ready') {
-        return h('p', { style: styles.hint }, state.status === 'loading' ? t('loading') : t('unavailable'))
+      if (snapshot.status !== 'ready') {
+        return h('p', { style: styles.hint }, snapshot.status === 'loading' ? t('loading') : t('unavailable'))
       }
 
       const busy = status === 'saving'
-      const disabled = state.writable === false || busy
+      const disabled = snapshot.writable === false || busy
 
       const submit = async (event) => {
         event?.preventDefault?.()
@@ -103,8 +112,8 @@ window.__ModuleLoader__.load({
           ? [{ op: 'unset', path: ['kernelPath'] }]
           : [{ op: 'set', path: ['kernelPath'], value: next }]
         try {
-          const saved = await form.mutate(ops, state.revision)
-          setStatus(saved ? 'saved' : 'failed')
+          const done = await controller.mutate(ops, snapshot.revision)
+          setStatus(done ? 'saved' : 'failed')
         } catch {
           setStatus('failed')
         }
@@ -139,7 +148,7 @@ window.__ModuleLoader__.load({
           status === 'failed' ? h('span', { style: styles.error, role: 'alert' }, t('failed')) : null,
         ),
         h('p', { style: styles.hint }, t('hint')),
-        state.writable === false ? h('p', { style: styles.hint, role: 'note' }, t('readonly')) : null,
+        snapshot.writable === false ? h('p', { style: styles.hint, role: 'note' }, t('readonly')) : null,
       )
     }
 
@@ -148,17 +157,20 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, DICTS), 'dsh-wolfram-mcp: dictionaries')
         const t = ctx.locale.bind(NS)
-        ctx.slots.inject('plugins.row.config', () =>
-          ctx.slots.register(
-            {
-              name: 'plugins.row.config',
-              key: ROW_KEY,
-              locale: NS,
-              inject: () => ({ t }),
-            },
-            ({ view, form }) => (view === 'summary' ? null : h(WolframConfig, { form, t })),
-          ),
-        )
+        ctx.inject(['configForms'], (scoped) => {
+          const forms = scoped.configForms
+          ctx.slots.inject('plugins.bundle.config', () =>
+            ctx.slots.register(
+              {
+                name: 'plugins.bundle.config',
+                key: BUNDLE_NAME,
+                locale: NS,
+                inject: () => ({ t }),
+              },
+              ({ view }) => (view === 'summary' ? null : h(WolframConfig, { t, forms })),
+            ),
+          )
+        })
       },
     }
   },

@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Wolfram Mathematica",
-    "description": "Connects the local Wolfram Mathematica kernel as an MCP tool server: the agent can evaluate Wolfram Language code, inspect symbol definitions, read and write notebooks, run code inspection, and run test reports. Ask for a Wolfram Language computation and it uses the mcp__wolfram__* tools. The kernel executable is never assumed — set its absolute path once in Plugins > Wolfram Mathematica > Configure; with no path set the plugin starts nothing. Requires Mathematica 14.3+ with the Wolfram/AgentTools paclet and an active license. Each configured kernel starts two processes per DSH launch, so tools appear some seconds in, and one evaluation is capped at 5 minutes. Turn the plugin off to stop kernels, or clear the path to keep the tools off while the plugin stays enabled.",
+    "description": "Connects the local Wolfram Mathematica kernel as an MCP tool server: the agent can evaluate Wolfram Language code, inspect symbol definitions, read and write notebooks, run code inspection, and run test reports. Ask for a Wolfram Language computation and it uses the mcp__wolfram__* tools. The kernel executable is never assumed — set its absolute path once on the Wolfram Mathematica page under Plugins, in the kernel executable field; with no path set the plugin starts nothing. Requires Mathematica 14.3+ with the Wolfram/AgentTools paclet and an active license. Each configured kernel starts two processes per DSH launch, so tools appear some seconds in, and one evaluation is capped at 5 minutes. Turn the plugin off to stop kernels, or clear the path to keep the tools off while the plugin stays enabled.",
     "detail": "docs/DETAIL.md"
   }
 }

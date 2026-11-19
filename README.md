@@ -20,8 +20,8 @@ same spec.
 ## Configure the kernel path
 
 1. Open **Plugins** in the sidebar and select **Wolfram Mathematica**.
-2. On the bundle page, choose **Configure** on the row, enter the absolute path
-   to the kernel executable, and save.
+2. On the bundle's page, between its description and its components, enter the
+   absolute path to the kernel executable in **Kernel executable** and save.
 
 On Windows the executable is normally
 `<Mathematica installation>\wolfram.exe`; use the exact file path, not the
