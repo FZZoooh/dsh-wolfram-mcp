@@ -1,0 +1,42 @@
+{
+  "name": "dsh-wolfram-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Connects a local Wolfram Mathematica kernel to DeepSeek Harness as an MCP tool server.",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "mcp",
+    "wolfram",
+    "mathematica"
+  ],
+  "author": "FZZoooh",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FZZoooh/dsh-wolfram-mcp.git"
+  },
+  "homepage": "https://github.com/FZZoooh/dsh-wolfram-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/FZZoooh/dsh-wolfram-mcp/issues"
+  },
+  "type": "module",
+  "exports": {
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
