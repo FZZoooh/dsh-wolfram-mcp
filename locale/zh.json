@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Wolfram Mathematica",
-    "description": "把本机 Wolfram Mathematica 内核作为 MCP 工具服务器接入：agent 可求值 Wolfram 语言、查询符号定义、读写笔记本、运行代码检查与测试报告。提出 Wolfram 语言计算需求即会调用 mcp__wolfram__* 工具。需要 Mathematica 14.3 及以上版本、Wolfram/AgentTools paclet 与有效许可证（本机验证 15.0.1）；默认内核为 D:\\Applications\\Mathematica15.0\\wolfram.exe。每次启动 DSH 会拉起两个内核进程，工具需数秒才出现；内核或许可证异常时工具不会出现。单次求值上限 5 分钟，超时会中止。可在 设置 > 插件 中修改 command，或关闭插件以停止内核。",
+    "description": "把本机 Wolfram Mathematica 内核作为 MCP 工具服务器接入：agent 可求值 Wolfram 语言、查询符号定义、读写笔记本、运行代码检查与测试报告。提出 Wolfram 语言计算需求即会调用 mcp__wolfram__* 工具。内核位置不会被自动假定——在 插件 > Wolfram Mathematica > 配置 中填写 wolfram.exe 的绝对路径即可；路径为空时插件不会启动任何内核。需要 Mathematica 14.3 及以上版本、Wolfram/AgentTools paclet 与有效许可证。每次启动 DSH 会为已配置的内核拉起两个进程，工具需数秒才就绪；单次求值上限 5 分钟。关闭插件即可停止内核，或清空路径在保持插件启用的同时停用工具。",
     "detail": "docs/DETAIL.zh.md"
   }
 }

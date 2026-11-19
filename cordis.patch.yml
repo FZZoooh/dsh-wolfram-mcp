@@ -1,32 +1,8 @@
-# Connects Wolfram Mathematica to DeepSeek Harness as an MCP tool server.
-#
-# The Wolfram/AgentTools paclet ships its own MCP server, so this bundle mounts
-# the in-box @deepseek-ai/dsh-mcp-client bridge against a local kernel instead
-# of shipping a second protocol implementation. After activation the agent sees
-# tools named mcp__wolfram__<tool>.
-#
-# Verified against Mathematica 15.0.1 with the bundled Wolfram/AgentTools
-# 2.1.17 paclet at D:\Applications\Mathematica15.0 on Windows.
+# Mounts this bundle's Host plugin. The plugin owns the Wolfram kernel path as
+# its own configuration (edited from the Plugins UI) and creates the official
+# @deepseek-ai/dsh-mcp-client bridge on the root Loader at runtime, only while a
+# path is configured. No kernel path is declared here.
 - insert:
-    - id: mcp-wolfram
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        serverName: wolfram
-        transport: stdio
-        # wolfram.exe is what the paclet itself writes into client configs.
-        command: 'D:\Applications\Mathematica15.0\wolfram.exe'
-        args:
-          - '-run'
-          # StartMCPServer[] without loading the init file first.
-          - 'PacletSymbol["Wolfram/AgentTools","Wolfram`AgentTools`StartMCPServer"][]'
-          - '-noinit'
-          - '-noprompt'
-        env:
-          # Tool set: WolframLanguage (coding tools), Wolfram (adds WolframAlpha),
-          # or WolframPacletDevelopment (adds paclet authoring tools).
-          MCP_SERVER_NAME: WolframLanguage
-        # A cold kernel plus paclet load takes seconds, and the client negotiates
-        # through an extra probe process before the serving process starts.
-        startupTimeoutMs: 120000
-        # Symbolic integration and ODE solving routinely exceed the 60 s default.
-        toolCallTimeoutMs: 300000
+    - id: wolfram-mcp
+      name: 'dsh-wolfram-mcp'
+      config: {}
