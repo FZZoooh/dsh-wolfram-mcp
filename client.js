@@ -22,6 +22,9 @@ window.__ModuleLoader__.load({
         save: 'Save',
         saving: 'Saving…',
         saved: 'Saved. The Wolfram tools reconnect in a moment.',
+        restart: 'Restart kernel',
+        restarting: 'Restarting…',
+        restarted: 'Kernel restarted. The Wolfram tools return in a few seconds.',
         failed: 'Could not save the path. Check the value and try again.',
         loading: 'Loading the saved configuration…',
         unavailable: 'This configuration is unavailable until the plugin is enabled.',
@@ -34,6 +37,9 @@ window.__ModuleLoader__.load({
         save: '保存',
         saving: '保存中…',
         saved: '已保存，Wolfram 工具稍后重新连接。',
+        restart: '重启内核',
+        restarting: '正在重启…',
+        restarted: '内核已重启，工具将在数秒后恢复。',
         failed: '保存失败，请检查路径后重试。',
         loading: '正在读取已保存的配置…',
         unavailable: '插件启用后才能配置。',
@@ -75,6 +81,16 @@ window.__ModuleLoader__.load({
         cursor: 'pointer',
       },
       buttonDisabled: { opacity: '0.55', cursor: 'default' },
+      buttonSecondary: {
+        padding: '6px 14px',
+        borderRadius: '8px',
+        border: '1px solid var(--dsw-alias-border-l2)',
+        background: 'transparent',
+        color: 'var(--dsw-alias-label-primary)',
+        fontSize: '13px',
+        cursor: 'pointer',
+      },
+      buttonSecondaryDisabled: { opacity: '0.55', cursor: 'default' },
       hint: { margin: '0', fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)', lineHeight: '1.5' },
       ok: { fontSize: '12px', color: 'var(--dsw-alias-state-success-primary)' },
       error: { fontSize: '12px', color: 'var(--dsw-alias-state-error-primary)' },
@@ -100,8 +116,20 @@ window.__ModuleLoader__.load({
         return h('p', { style: styles.hint }, snapshot.status === 'loading' ? t('loading') : t('unavailable'))
       }
 
-      const busy = status === 'saving'
+      const busy = status === 'saving' || status === 'restarting'
       const disabled = snapshot.writable === false || busy
+
+      const restartKernel = async () => {
+        if (disabled) return
+        setStatus('restarting')
+        const next = Number(snapshot.value?.restart ?? 0) + 1
+        try {
+          const done = await controller.mutate([{ op: 'set', path: ['restart'], value: next }], snapshot.revision)
+          setStatus(done ? 'restarted' : 'failed')
+        } catch {
+          setStatus('failed')
+        }
+      }
 
       const submit = async (event) => {
         event?.preventDefault?.()
@@ -142,9 +170,20 @@ window.__ModuleLoader__.load({
           h(
             'button',
             { type: 'submit', style: disabled ? { ...styles.button, ...styles.buttonDisabled } : styles.button, disabled },
-            busy ? t('saving') : t('save'),
+            status === 'saving' ? t('saving') : t('save'),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              style: disabled ? { ...styles.buttonSecondary, ...styles.buttonSecondaryDisabled } : styles.buttonSecondary,
+              disabled,
+              onClick: restartKernel,
+            },
+            status === 'restarting' ? t('restarting') : t('restart'),
           ),
           status === 'saved' ? h('span', { style: styles.ok, role: 'status' }, t('saved')) : null,
+          status === 'restarted' ? h('span', { style: styles.ok, role: 'status' }, t('restarted')) : null,
           status === 'failed' ? h('span', { style: styles.error, role: 'alert' }, t('failed')) : null,
         ),
         h('p', { style: styles.hint }, t('hint')),

@@ -1,6 +1,6 @@
 {
   "name": "dsh-wolfram-mcp",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Connects a local Wolfram Mathematica kernel to DeepSeek Harness as an MCP tool server, configured from the Plugins UI.",
   "keywords": [

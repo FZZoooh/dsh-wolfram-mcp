@@ -33,13 +33,31 @@ Saving the field updates the running plugin in place (the field is volatile), so
 the bridge reconnects without restarting DSH. A changed path starts a fresh
 kernel; the previous one stops with the old bridge entry.
 
+**Restart kernel** on the same page rebuilds the bridge and starts a fresh
+kernel without touching the saved path. Use it when evaluations stop
+responding: a hung evaluation keeps the kernel busy, and calls behind it queue
+until they time out.
+
+## Reliability
+
+- The Wolfram MCP server constrains each evaluation to 60 seconds by default
+  (`TimeConstraint -> 60` in its `WolframLanguageEvaluator`); the agent can pass
+  a larger `timeConstraint` argument for a longer computation. The transport
+  additionally caps one call at five minutes.
+- A cold start, or the first start after a paclet update, can hang before the
+  MCP handshake completes. If no `mcp__wolfram__` tool exists 75 seconds after
+  the bridge is created, the plugin rebuilds it, up to two times, and logs each
+  attempt. The rebuild also clears the hung child kernel.
+- Nothing retries a tool call that the kernel never answers; the **Restart
+  kernel** control is the recovery path.
+
 ## How it works
 
-- The bundle's only row is this plugin, with one configuration field,
-  `kernelPath`.
-- On activation, and whenever that field changes, the plugin creates or removes
-  an entry named `wolfram-mcp-bridge` on the root Loader, pointing at
-  `@deepseek-ai/dsh-mcp-client` with the configured command. Runtime-created
+- The bundle's only row is this plugin, with two configuration fields,
+  `kernelPath` and `restart`.
+- On activation, and whenever either field changes, the plugin creates, removes
+  or rebuilds an entry named `wolfram-mcp-bridge` on the root Loader, pointing
+  at `@deepseek-ai/dsh-mcp-client` with the configured command. Runtime-created
   entries are in-memory: they are rebuilt from the saved path on every launch
   and never written into the profile patch.
 - With no path, no bridge entry exists and no kernel process starts.
@@ -69,12 +87,16 @@ in one call remain available in the next.
 
 ## Limitations
 
-- Every DSH launch starts two kernel processes per configured bridge (probe plus
-  serving process); the tools appear a few seconds after startup.
-- A single evaluation can run for up to five minutes; longer work should be
-  split.
+- Each configured bridge starts one serving kernel process; the tools appear a
+  few seconds after startup, or after a bridge rebuild.
+- A single evaluation is constrained to 60 seconds by the server unless the
+  caller passes a larger `timeConstraint`; the transport caps a call at five
+  minutes.
 - A missing or invalid path leaves the MCP connection failing with a logged
-  error; the plugin itself keeps running. Reopen **Configure** to correct it.
+  error; the plugin itself keeps running. Reopen the configuration page to
+  correct it.
+- A crashed or wedged kernel is not detectable as such: calls simply time out
+  until the bridge is rebuilt.
 
 ## Troubleshooting
 

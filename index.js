@@ -7,9 +7,15 @@
  * on the root Loader at runtime (in-memory, recreated every boot) so an
  * unconfigured plugin starts no process at all.
  *
- * The field is `volatile()`, which is what makes it editable from the Plugins
- * row form without remounting this plugin; a committed change arrives as
- * `loader/volatile-update` and rebuilds the bridge entry with the new path.
+ * Two failure modes are handled explicitly:
+ *
+ * - The first connection after a cold boot (or a paclet update) can hang before
+ *   the MCP handshake; the client then never registers tools while its child
+ *   kernel stays alive. A watchdog notices that no `mcp__wolfram__` tool exists
+ *   after a bounded wait and rebuilds the bridge.
+ * - A wedged kernel makes every later call queue until it times out, so the
+ *   configuration page exposes a restart action backed by the `restart` field,
+ *   which rebuilds the bridge and therefore starts a fresh kernel.
  */
 import z from '@deepseek-ai/schemastery'
 
@@ -30,6 +36,12 @@ const BRIDGE_ARGS = [
 /** Tool set exposed by the Wolfram MCP server; see its own documentation. */
 const MCP_SERVER_NAME = 'WolframLanguage'
 
+/** Wait this long for tools after creating the bridge before rebuilding it. */
+const WATCHDOG_MS = 75_000
+
+/** Automatic rebuilds after a bridge that never produced tools. */
+const MAX_REBUILDS = 2
+
 export const name = 'wolfram-mcp'
 
 /** The bridge entry is created through the Loader service. */
@@ -40,6 +52,11 @@ export const Config = z.object({
     .string()
     .default('')
     .description('Absolute path to the Wolfram kernel executable (wolfram.exe). Leave empty to keep the Wolfram tools off.')
+    .volatile(),
+  restart: z
+    .number()
+    .default(0)
+    .description('Increment to rebuild the MCP bridge and start a fresh kernel.')
     .volatile(),
 })
 
@@ -58,7 +75,7 @@ function bridgeConfig(kernelPath) {
     // A cold kernel plus paclet load takes seconds, and the client negotiates
     // through an extra probe process before the serving process starts.
     startupTimeoutMs: 120_000,
-    // Symbolic integration and ODE solving routinely exceed the 60 s default.
+    // A wedged kernel must not hold one call for longer than a person waits.
     toolCallTimeoutMs: 300_000,
   }
 }
@@ -72,11 +89,57 @@ export async function apply(ctx, config) {
   let mounted = false
   let disposed = false
   let queue = Promise.resolve()
+  let generation = 0
+  let watchdog
+  let rebuilds = 0
 
   const currentPath = () => String(config.kernelPath.get() ?? '').trim()
 
-  const sync = async () => {
+  const hasTools = () => {
+    const tools = ctx.get('tools')
+    if (tools === undefined) return false
+    try {
+      return tools.schemas().some((schema) => schema.name.startsWith(`mcp__${SERVER_NAME}__`))
+    } catch {
+      return false
+    }
+  }
+
+  const scheduleSync = () => {
+    queue = queue.then(sync).catch((error) => {
+      ctx.logger.warn('wolfram-mcp: connecting to %s failed: %s', currentPath(), error?.message ?? String(error))
+    })
+  }
+
+  const armWatchdog = (token) => {
+    watchdog = setTimeout(() => {
+      if (disposed || token !== generation) return
+      if (hasTools()) {
+        rebuilds = 0
+        return
+      }
+      if (rebuilds >= MAX_REBUILDS) {
+        ctx.logger.warn(
+          'wolfram-mcp: the bridge still exposes no tools after %d rebuilds; restart DSH or check the kernel path',
+          MAX_REBUILDS,
+        )
+        return
+      }
+      rebuilds += 1
+      ctx.logger.warn(
+        'wolfram-mcp: no tools appeared after %ds; rebuilding the bridge (attempt %d/%d)',
+        Math.round(WATCHDOG_MS / 1000),
+        rebuilds,
+        MAX_REBUILDS,
+      )
+      scheduleSync()
+    }, WATCHDOG_MS)
+  }
+
+  async function sync() {
     if (disposed) return
+    const token = ++generation
+    clearTimeout(watchdog)
     const kernelPath = currentPath()
     if (mounted) {
       mounted = false
@@ -92,12 +155,7 @@ export async function apply(ctx, config) {
       config: bridgeConfig(kernelPath),
     })
     mounted = true
-  }
-
-  const scheduleSync = () => {
-    queue = queue.then(sync).catch((error) => {
-      ctx.logger.warn('wolfram-mcp: connecting to %s failed: %s', currentPath(), error?.message ?? String(error))
-    })
+    armWatchdog(token)
   }
 
   if (currentPath()) await sync()
@@ -105,6 +163,7 @@ export async function apply(ctx, config) {
   ctx.effect(
     () => () => {
       disposed = true
+      clearTimeout(watchdog)
       if (!mounted) return
       mounted = false
       return ctx.loader.remove(BRIDGE_ID)
@@ -113,7 +172,13 @@ export async function apply(ctx, config) {
   )
 
   ctx.on('loader/volatile-update', (paths) => {
-    if (!paths.some((path) => path.length === 1 && path[0] === 'kernelPath')) return
+    const restart = paths.some((path) => path.length === 1 && path[0] === 'restart')
+    const path = paths.some((entry) => entry.length === 1 && entry[0] === 'kernelPath')
+    if (!restart && !path) return
+    if (restart) {
+      rebuilds = 0
+      ctx.logger.info('wolfram-mcp: restarting the kernel on request')
+    }
     // Reacting inside the settings transaction would nest an HMR transaction,
     // which the loader refuses; the entry update that committed the value has
     // finished by the next macrotask.
